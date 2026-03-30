@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рисование Голосом: Исследовательский Проект</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'paper': '#f8f9fa',
+                        'ink': '#212529',
+                        'accent-blue': '#3a86ff',
+                        'accent-orange': '#fb5607',
+                        'accent-purple': '#8338ec',
+                        'surface': '#ffffff'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'serif': ['Merriweather', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #212529;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 450px;
+            background: #111;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 450px;
+            }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #3a86ff;
+            color: #3a86ff;
+            font-weight: 600;
+        }
+
+        .mapping-btn.active {
+            background-color: #3a86ff;
+            color: white;
+            border-color: #3a86ff;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-indicator::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            width: 2px;
+            height: 100%;
+            background-color: #e5e7eb;
+            transform: translateX(-50%);
+            z-index: -1;
+        }
+        
+        .step-item:last-child .step-indicator::after {
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Chosen Palette: Paper & Ink (Off-white background #f8f9fa, dark text #212529, accents: tech-blue #3a86ff, creative-orange #fb5607, structural-purple #8338ec) -->
+    <!-- Application Structure Plan: A single-page interactive report. It begins with a conceptual Canvas simulation to immediately engage the user with the core idea (sound creating visual form). Then, it uses an interactive mapping UI to explain the theoretical translation of audio to visual. Tabbed interfaces organize the heavy technological approaches (Physical/Hybrid/Digital) to prevent cognitive overload. A grid layout presents materials and space concepts. Finally, a vertical timeline visualizes the MVP roadmap. This structure transforms a dry list of questions into an exploratory journey. -->
+    <!-- Visualization & Content Choices: 
+         1. Core Concept -> Canvas Interaction -> Simulates pitch/volume mapping to hue/brush size -> HTML5 Canvas API (No SVG).
+         2. Sound-to-Color Logic -> Interactive Button UI -> Shows relationships between frequency/amplitude and color/brightness -> Vanilla JS DOM manipulation.
+         3. Tech Approaches -> Tabbed Layout -> Compares Physical/Hybrid/Digital architectures -> HTML/CSS/JS (Clean organization).
+         4. MVP Roadmap -> Vertical Timeline -> Shows chronological steps -> HTML/CSS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <header class="pt-16 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+        <div class="inline-block mb-4 px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue text-sm font-semibold tracking-wide">
+            Художественно-технологическое исследование
+        </div>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-serif font-bold tracking-tight mb-6">
+            Рисование Голосом
+        </h1>
+        <p class="mt-4 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Разработка системы, в которой голос человека напрямую преобразуется в визуальное изображение. Звуковые параметры управляют цветом, формой и динамикой визуального следа.
+        </p>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24">
+
+        <section id="simulation">
+            <div class="mb-8 max-w-3xl">
+                <h2 class="text-3xl font-serif font-bold mb-4">Интерактивная Симуляция Концепта</h2>
+                <p class="text-gray-600 text-lg">
+                    Этот блок демонстрирует фундаментальную идею проекта: перевод абстрактных параметров (в данном случае движений мыши/пальца, симулирующих звук) в визуальный след в реальном времени. В итоговой системе источником данных будет анализ звуковых волн микрофоном.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div class="lg:col-span-2">
+                    <div class="chart-container cursor-crosshair relative" id="canvasContainer">
+                        <canvas id="conceptCanvas"></canvas>
+                        <div class="absolute top-4 left-4 text-white/50 text-sm font-mono pointer-events-none">
+                            ОСЬ X (Частота) -> ЦВЕТ<br>
+                            ОСЬ Y (Амплитуда) -> ТОЛЩИНА
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center text-white/30 text-xl pointer-events-none" id="canvasHint">
+                            Проведите курсором или пальцем
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center h-full">
+                    <h3 class="text-xl font-bold mb-4 text-accent-blue">Логика преобразования</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mr-3 mt-0.5">1</span>
+                            <div>
+                                <strong class="block text-gray-900">Ввод данных</strong>
+                                <span class="text-gray-600 text-sm">Система считывает изменения в пространстве (симуляция изменения тона и громкости голоса).</span>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mr-3 mt-0.5">2</span>
+                            <div>
+                                <strong class="block text-gray-900">Маппинг</strong>
+                                <span class="text-gray-600 text-sm">Координаты X привязаны к цветовому спектру (модель частота-цвет), координаты Y к размеру кисти (амплитуда).</span>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mr-3 mt-0.5">3</span>
+                            <div>
+                                <strong class="block text-gray-900">Генерация</strong>
+                                <span class="text-gray-600 text-sm">Отрисовка органического следа с учетом эффекта затухания, имитирующего свойства жидкой краски.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="mapping">
+            <div class="mb-8 max-w-3xl">
+                <h2 class="text-3xl font-serif font-bold mb-4">Синтез: Звук → Визуал</h2>
+                <p class="text-gray-600 text-lg">
+                    Ключевой исследовательский блок проекта заключается в поиске научно обоснованного или художественно выразительного соответствия акустических свойств оптическим. Выберите параметр звука, чтобы увидеть предлагаемую модель конвертации.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Параметры звука (Вход)</h3>
+                        <div class="space-y-3" id="soundParams">
+                            <button class="mapping-btn w-full text-left px-5 py-4 rounded-xl border border-gray-200 hover:border-accent-blue hover:shadow-md transition-all duration-200 active" data-target="freq">
+                                <span class="block text-lg font-bold">Частота (Высота тона)</span>
+                            </button>
+                            <button class="mapping-btn w-full text-left px-5 py-4 rounded-xl border border-gray-200 hover:border-accent-blue hover:shadow-md transition-all duration-200" data-target="amp">
+                                <span class="block text-lg font-bold">Амплитуда (Громкость)</span>
+                            </button>
+                            <button class="mapping-btn w-full text-left px-5 py-4 rounded-xl border border-gray-200 hover:border-accent-blue hover:shadow-md transition-all duration-200" data-target="timbre">
+                                <span class="block text-lg font-bold">Тембр (Окраска звука)</span>
+                            </button>
+                            <button class="mapping-btn w-full text-left px-5 py-4 rounded-xl border border-gray-200 hover:border-accent-blue hover:shadow-md transition-all duration-200" data-target="dir">
+                                <span class="block text-lg font-bold">Направленность</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col justify-center">
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Визуальный результат (Выход)</h3>
+                        
+                        <div id="mappingContent" class="min-h-[200px] bg-gray-50 rounded-xl p-6 border border-gray-100">
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <div class="mb-8 max-w-3xl">
+                <h2 class="text-3xl font-serif font-bold mb-4">Технологические Подходы</h2>
+                <p class="text-gray-600 text-lg">
+                    Реализация системы возможна тремя путями: от прямого физического воздействия звуковой волны на материю до полностью цифровой генеративной графики. Ниже представлен анализ компонентов и открытых вопросов для каждой архитектуры.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="flex flex-wrap border-b border-gray-200 bg-gray-50" id="techTabs">
+                    <button class="tab-btn active px-6 py-4 text-sm md:text-base font-medium text-gray-600 hover:text-ink transition-colors focus:outline-none" data-tab="physical">
+                        A. Физическая система
+                    </button>
+                    <button class="tab-btn px-6 py-4 text-sm md:text-base font-medium text-gray-600 hover:text-ink transition-colors focus:outline-none" data-tab="hybrid">
+                        B. Гибридная система
+                    </button>
+                    <button class="tab-btn px-6 py-4 text-sm md:text-base font-medium text-gray-600 hover:text-ink transition-colors focus:outline-none" data-tab="digital">
+                        C. Цифровая система
+                    </button>
+                </div>
+
+                <div class="p-8">
+                    <div id="tab-physical" class="tab-content fade-in">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-xl font-bold mb-3 text-accent-orange">Прямое материальное воздействие</h3>
+                                <p class="text-gray-600 mb-6">Использование акустических вибраций для непосредственного управления материей (киматика).</p>
+                                <h4 class="font-bold text-sm text-gray-400 uppercase tracking-wider mb-3">Компоненты</h4>
+                                <ul class="space-y-2 mb-6">
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-orange rounded-full mr-2"></span> Мембраны и резонаторы</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-orange rounded-full mr-2"></span> Жидкие пигменты (неньютоновские, феррожидкости)</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-orange rounded-full mr-2"></span> Мелкодисперсные порошки</li>
+                                </ul>
+                            </div>
+                            <div class="bg-orange-50 p-6 rounded-xl border border-orange-100">
+                                <h4 class="font-bold text-accent-orange mb-3">Открытые вопросы исследования</h4>
+                                <ul class="space-y-3 text-sm text-gray-700">
+                                    <li>Как управлять точечным распределением краски через звук, избегая хаотичного разбрызгивания?</li>
+                                    <li>Возможно ли направлять поток звука (акустические линзы, массивы узконаправленных динамиков)?</li>
+                                    <li>Какие материалы дают наилучший визуальный отклик именно на спектр частот человеческого голоса?</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-hybrid" class="tab-content hidden fade-in">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-xl font-bold mb-3 text-accent-purple">Звук → Данные → Механика</h3>
+                                <p class="text-gray-600 mb-6">Анализ звука микрофоном и конвертация параметров в команды для физических механизмов, наносящих краску.</p>
+                                <h4 class="font-bold text-sm text-gray-400 uppercase tracking-wider mb-3">Компоненты</h4>
+                                <ul class="space-y-2 mb-6">
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-purple rounded-full mr-2"></span> Массив чувствительных микрофонов</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-purple rounded-full mr-2"></span> Контроллеры (Arduino / Raspberry Pi) для реалтайм-анализа (FFT)</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-purple rounded-full mr-2"></span> Исполнительные механизмы (микронасосы, клапаны, ЧПУ-вибраторы)</li>
+                                </ul>
+                            </div>
+                            <div class="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                                <h4 class="font-bold text-accent-purple mb-3">Открытые вопросы исследования</h4>
+                                <ul class="space-y-3 text-sm text-gray-700">
+                                    <li>Как оптимизировать алгоритмы ЦОС (цифровой обработки сигналов) для работы без заметных задержек?</li>
+                                    <li>Какая задержка (latency) между звуком и выбросом краски разрушает у пользователя "ощущение рисования" голосом?</li>
+                                    <li>Как обеспечить точность механики при быстрых изменениях голоса?</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-digital" class="tab-content hidden fade-in">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-xl font-bold mb-3 text-accent-blue">Реалтайм Генеративная Графика</h3>
+                                <p class="text-gray-600 mb-6">Полностью программный анализ аудиопотока и рендеринг визуальной проекции на экран или холст.</p>
+                                <h4 class="font-bold text-sm text-gray-400 uppercase tracking-wider mb-3">Среды разработки</h4>
+                                <ul class="space-y-2 mb-6">
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-blue rounded-full mr-2"></span> TouchDesigner (нодовое программирование, GPU-шейдеры)</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-blue rounded-full mr-2"></span> Max/MSP / Jitter (глубокий анализ звука)</li>
+                                    <li class="flex items-center"><span class="w-1.5 h-1.5 bg-accent-blue rounded-full mr-2"></span> Processing / p5.js (быстрое прототипирование)</li>
+                                </ul>
+                            </div>
+                            <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                                <h4 class="font-bold text-accent-blue mb-3">Открытые вопросы исследования</h4>
+                                <ul class="space-y-3 text-sm text-gray-700">
+                                    <li>Какие алгоритмы (например, Fluid Dynamics, Reaction-Diffusion) лучше подходят для генерации органических, а не "компьютерных" форм?</li>
+                                    <li>Как добиться ощущения фактуры "краски", объема и мазка, а не плоской абстрактной векторной графики?</li>
+                                    <li>Как интегрировать "ошибку" и случайность как художественный элемент?</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="materials-space">
+            <div class="mb-8 max-w-3xl">
+                <h2 class="text-3xl font-serif font-bold mb-4">Пространство и Носитель</h2>
+                <p class="text-gray-600 text-lg">
+                    Критический аспект перевода голоса в картину — выбор физического холста и методов позиционирования звука в пространстве. Эти факторы определяют тактильность и масштаб инсталляции.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-6xl">📡</div>
+                    <h3 class="text-xl font-bold mb-4 relative z-10">Позиционирование Источника</h3>
+                    <p class="text-gray-600 mb-4 text-sm relative z-10">Проблема превращения голоса в инструмент рисования линий требует точного отслеживания положения спикера.</p>
+                    <ul class="space-y-2 text-sm text-gray-800 relative z-10">
+                        <li class="flex items-start"><span class="mr-2 text-accent-blue">➔</span> Beamforming (формирование луча) массива микрофонов для вычисления координат.</li>
+                        <li class="flex items-start"><span class="mr-2 text-accent-blue">➔</span> Связь пространственных координат звука (X,Y,Z) с координатами двумерного холста.</li>
+                        <li class="flex items-start"><span class="mr-2 text-accent-blue">➔</span> Открытый вопрос: Можно ли интуитивно "рисовать линию", перемещаясь по комнате во время пения/разговора?</li>
+                    </ul>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-6xl">🎨</div>
+                    <h3 class="text-xl font-bold mb-4 relative z-10">Материалы Поверхности</h3>
+                    <p class="text-gray-600 mb-4 text-sm relative z-10">Поиск идеальной среды, способной фиксировать звуковые вибрации или реагировать на гибридные системы.</p>
+                    <ul class="space-y-2 text-sm text-gray-800 relative z-10">
+                        <li class="flex items-start"><span class="mr-2 text-accent-orange">➔</span> Жидкости различной вязкости (вода, масла) над резонаторами.</li>
+                        <li class="flex items-start"><span class="mr-2 text-accent-orange">➔</span> Холсты с реактивным покрытием (светочувствительные краски + лазерная проекция звука).</li>
+                        <li class="flex items-start"><span class="mr-2 text-accent-orange">➔</span> Изучение экзотических материалов: феррожидкости, управляемые электромагнитами (звук -> ток -> поле).</li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="roadmap" class="mb-20">
+             <div class="mb-12 max-w-3xl">
+                <h2 class="text-3xl font-serif font-bold mb-4">План Реализации (MVP)</h2>
+                <p class="text-gray-600 text-lg">
+                    Поэтапный подход к разработке инсталляции, начиная от проверки программных алгоритмов и заканчивая физической реализацией системы реального времени.
+                </p>
+            </div>
+
+            <div class="max-w-4xl mx-auto px-4 relative">
+                
+                <div class="step-item relative pl-10 sm:pl-16 py-6 group">
+                    <div class="step-indicator absolute left-0 top-8 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white border-4 border-gray-200 group-hover:border-accent-blue transition-colors z-10 transform -translate-x-1/2"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <span class="text-xs font-bold uppercase tracking-widest text-accent-blue mb-2 block">Этап 1</span>
+                        <h3 class="text-xl font-bold mb-2">Минимальный Прототип (Цифровой)</h3>
+                        <p class="text-gray-600">Связка: Микрофон + Processing (или p5.js). Разработка алгоритмов Быстрого Преобразования Фурье (FFT) для анализа голоса. Визуализация параметров в абстрактные формы на экране в реальном времени. Настройка моделей маппинга "звук-цвет".</p>
+                    </div>
+                </div>
+
+                <div class="step-item relative pl-10 sm:pl-16 py-6 group">
+                    <div class="step-indicator absolute left-0 top-8 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white border-4 border-gray-200 group-hover:border-accent-purple transition-colors z-10 transform -translate-x-1/2"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <span class="text-xs font-bold uppercase tracking-widest text-accent-purple mb-2 block">Этап 2</span>
+                        <h3 class="text-xl font-bold mb-2">Физическое Управление (Гибрид)</h3>
+                        <p class="text-gray-600">Перенос цифрового управления на физический объект. Подключение Arduino/Raspberry Pi. Эксперименты с управлением подачей жидкости/пигмента на основе проанализированных звуковых данных. Решение проблем с задержкой (latency) механики.</p>
+                    </div>
+                </div>
+
+                <div class="step-item relative pl-10 sm:pl-16 py-6 group">
+                    <div class="step-indicator absolute left-0 top-8 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white border-4 border-gray-200 group-hover:border-accent-orange transition-colors z-10 transform -translate-x-1/2"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                         <span class="text-xs font-bold uppercase tracking-widest text-accent-orange mb-2 block">Этап 3</span>
+                        <h3 class="text-xl font-bold mb-2">Финальная Инсталляция</h3>
+                        <p class="text-gray-600">Сборка готовой художественной установки. Человек использует голос (речь, пение) — система мгновенно создает уникальный физический отпечаток на холсте. Внедрение художественной логики (ограничение палитры, характер мазка) для создания "живописи", а не сухой инфографики.</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-ink text-white py-8 text-center mt-12 border-t border-gray-800">
+        <p class="text-gray-400 text-sm">Исследовательский концепт "Рисование Голосом" &copy; 2024</p>
+    </footer>
+
+    <script>
+        // --- Interactive Canvas Demo Logic ---
+        const canvas = document.getElementById('conceptCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+        const hint = document.getElementById('canvasHint');
+        
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let hue = 0;
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function draw(e) {
+            if (!isDrawing) return;
+            hint.style.opacity = '0'; // Hide hint
+
+            // Support touch and mouse
+            let currentX, currentY;
+            if (e.type.includes('touch')) {
+                const rect = canvas.getBoundingClientRect();
+                currentX = e.touches[0].clientX - rect.left;
+                currentY = e.touches[0].clientY - rect.top;
+                e.preventDefault(); // Prevent scrolling
+            } else {
+                currentX = e.offsetX;
+                currentY = e.offsetY;
+            }
+
+            // MAPPING LOGIC SIMULATION
+            // X position determines Hue (Frequency simulation)
+            hue = (currentX / canvas.width) * 360; 
+            
+            // Y position determines Line Width (Amplitude simulation)
+            // Reverse Y so higher up = thicker line
+            let lineWidth = ((canvas.height - currentY) / canvas.height) * 40 + 2; 
+
+            ctx.strokeStyle = `hsl(${hue}, 80%, 60%)`;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = lineWidth;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+
+            [lastX, lastY] = [currentX, currentY];
+        }
+
+        // Fade out effect to simulate fluid dynamics/time
+        setInterval(() => {
+            ctx.fillStyle = 'rgba(17, 17, 17, 0.05)'; // Match container bg #111 with opacity
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }, 50);
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        canvas.addEventListener('touchstart', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.touches[0].clientX - rect.left;
+            lastY = e.touches[0].clientY - rect.top;
+        }, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', () => isDrawing = false);
+
+        // --- Mapping Data & Interaction Logic ---
+        const mappingData = {
+            freq: {
+                title: 'Цвет (Спектр)',
+                desc: '<strong>Модель: Линейная или Логарифмическая.</strong><br> Низкие частоты (басы) могут соответствовать темным или холодным оттенкам (синий, фиолетовый). Высокие частоты — ярким, теплым цветам (желтый, красный). Существуют разные модели (напр., цветовой круг Иттена сопоставленный с октавами), но вопрос объективности остается открытым.',
+                color: 'text-blue-600',
+                bg: 'bg-blue-50',
+                border: 'border-blue-200'
+            },
+            amp: {
+                title: 'Яркость / Интенсивность / Толщина',
+                desc: '<strong>Модель: Прямая пропорциональность.</strong><br> Громкий звук переводится в более насыщенный цвет, более толстую линию мазка или большее количество выбрасываемой материи/пигмента. Тихий звук — полупрозрачность, тонкие линии, пастельные тона.',
+                color: 'text-orange-600',
+                bg: 'bg-orange-50',
+                border: 'border-orange-200'
+            },
+            timbre: {
+                title: 'Текстура / Характер мазка',
+                desc: '<strong>Модель: Спектральный анализ.</strong><br> Тембр (форма волны, обертоны) определяет "шершавость" или "гладкость" визуального следа. Чистый тон (синусоида) дает гладкую линию. Хриплый или сложный голос с множеством гармоник создает текстурированный, "брызгающий" или многослойный мазок.',
+                color: 'text-purple-600',
+                bg: 'bg-purple-50',
+                border: 'border-purple-200'
+            },
+            dir: {
+                title: 'Форма / Движение (Координаты)',
+                desc: '<strong>Модель: Пространственный маппинг.</strong><br> Перемещение источника звука относительно микрофонов (beamforming) переводится в координаты X,Y на холсте. Направление звуковой волны может определять вектор движения виртуальной "кисти".',
+                color: 'text-gray-800',
+                bg: 'bg-gray-100',
+                border: 'border-gray-300'
+            }
+        };
+
+        const mappingBtns = document.querySelectorAll('.mapping-btn');
+        const mappingContent = document.getElementById('mappingContent');
+
+        function updateMapping(key) {
+            const data = mappingData[key];
+            mappingContent.className = `min-h-[200px] rounded-xl p-6 border fade-in ${data.bg} ${data.border}`;
+            mappingContent.innerHTML = `
+                <h4 class="text-2xl font-bold mb-4 ${data.color}">➔ ${data.title}</h4>
+                <p class="text-gray-700 leading-relaxed text-lg">${data.desc}</p>
+                <div class="mt-4 pt-4 border-t border-black/5">
+                    <span class="text-xs font-bold text-gray-500 uppercase">Вопрос исследования:</span>
+                    <p class="text-sm text-gray-600 mt-1 italic">Есть ли научно обоснованное соответствие, или создание "узнаваемого стиля" всегда требует субъективной художественной настройки?</p>
+                </div>
+            `;
+            
+            // Re-trigger animation
+            mappingContent.style.animation = 'none';
+            mappingContent.offsetHeight; /* trigger reflow */
+            mappingContent.style.animation = null; 
+        }
+
+        mappingBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                mappingBtns.forEach(b => b.classList.remove('active'));
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('active');
+                updateMapping(targetBtn.dataset.target);
+            });
+        });
+
+        // Initialize mapping
+        updateMapping('freq');
+
+        // --- Tabs Logic ---
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active classes
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.add('hidden'));
+
+                // Add active class to clicked button and corresponding content
+                btn.classList.add('active');
+                const targetId = `tab-${btn.dataset.tab}`;
+                document.getElementById(targetId).classList.remove('hidden');
+            });
+        });
+
+    </script>
+</body>
+</html>
